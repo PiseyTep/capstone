@@ -1,6 +1,8 @@
 <?php
 session_start();
 include 'connect.php';
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
 
 // Handle User Registration
 if (isset($_POST['signUp'])) {
@@ -25,7 +27,9 @@ if (isset($_POST['signUp'])) {
         $error_message = "Email Address Already Exists!";
     } else {
         // Insert new admin into the database - defaults to unapproved status
-        $insertQuery = $conn->prepare("INSERT INTO `users` (firstName, lastName, email, password, approved, role) VALUES (?, ?, ?, ?, 0, 'admin')");
+       // In login.php, update your insert query to match the database structure
+
+$insertQuery = $conn->prepare("INSERT INTO `users` (first_name, last_name, email, password, approved, role) VALUES (?, ?, ?, ?, 0, 'admin')");
         if ($insertQuery === false) {
             die("Error preparing insert query: " . $conn->error);
         }
@@ -64,7 +68,7 @@ if (isset($_POST['signIn'])) {
               $error_message = "Your account is pending approval. Please contact a super admin.";
           } else {
               // Login successful
-              $_SESSION['user_id'] = $user['Id']; // Use 'Id' as per your table structure
+              $_SESSION['user_id'] = $user['id']; // Change from 'Id' to 'id'
               $_SESSION['email'] = $user['email'];
               $_SESSION['role'] = $user['role'] ?? 'admin'; // Store the role in session
               

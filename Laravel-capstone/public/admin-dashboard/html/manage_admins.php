@@ -1,11 +1,17 @@
 <?php
 session_start();
 include("connect.php");
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
+function redirect($url) {
+    header("Location: $url");
+    exit();
+}
 
 // Check if user is logged in
 if (!isset($_SESSION['email'])) {
-    header("Location: login.php");
-    exit();
+    redirect("login.php");
 }
 
 // Check if user is a super admin
@@ -15,11 +21,15 @@ $query->bind_param("s", $email);
 $query->execute();
 $user = $query->get_result()->fetch_assoc();
 
+if (!$user || $user['role'] !== 'super_admin') {
+    redirect("index.php?error=permission");
+}
 
-// Split the name into first and last names if needed
-$nameParts = explode(' ', $user['name'], 2);
-$firstName = $nameParts[0];
-$lastName = $nameParts[1] ?? ''; // Handle case where there is no last name
+// Initialize admin arrays
+$pendingAdmins = [];
+$approvedAdmins = [];
+
+// Check if super admin
 $isSuperAdmin = ($user && isset($user['role']) && $user['role'] === 'super_admin');
 
 // If not super admin, redirect to dashboard
@@ -36,6 +46,7 @@ $result = $pendingQuery->get_result();
 while ($row = $result->fetch_assoc()) {
     $pendingAdmins[] = $row;
 }
+
 // Fetch all approved admins directly from database
 $approvedAdmins = [];
 $approvedQuery = $conn->prepare("SELECT * FROM `users` WHERE approved = 1");
@@ -45,11 +56,10 @@ while ($row = $result->fetch_assoc()) {
     $approvedAdmins[] = $row;
 }
 
-
 // Handle admin approval
 if (isset($_POST['approve_admin']) && isset($_POST['admin_id'])) {
     $adminId = $_POST['admin_id'];
-    $updateQuery = $conn->prepare("UPDATE `users` SET approved = 1 WHERE Id = ?");
+    $updateQuery = $conn->prepare("UPDATE `users` SET approved = 1 WHERE id = ?");
     $updateQuery->bind_param("i", $adminId);
     if ($updateQuery->execute()) {
         header("Location: manage_admins.php?success=approved");
@@ -59,13 +69,11 @@ if (isset($_POST['approve_admin']) && isset($_POST['admin_id'])) {
     }
 }
 
-
-
 // Handle admin deletion
 if (isset($_POST['delete_admin']) && isset($_POST['admin_id'])) {
     $adminId = $_POST['admin_id'];
-    $deleteQuery = $conn->prepare("DELETE FROM `users` WHERE Id = ? AND Id != ?");
-    $deleteQuery->bind_param("ii", $adminId, $user['Id']);
+    $deleteQuery = $conn->prepare("DELETE FROM `users` WHERE id = ? AND id != ?");
+    $deleteQuery->bind_param("ii", $adminId, $user['id']);
     if ($deleteQuery->execute()) {
         header("Location: manage_admins.php?success=deleted");
         exit();
@@ -73,7 +81,6 @@ if (isset($_POST['delete_admin']) && isset($_POST['admin_id'])) {
         $error_message = "Error deleting administrator: " . $conn->error;
     }
 }
-
 
 // Handle adding new admin
 if (isset($_POST['add_admin'])) {
@@ -93,7 +100,7 @@ if (isset($_POST['add_admin'])) {
     if ($checkResult->num_rows > 0) {
         $error_message = "Email already exists!";
     } else {
-        $insertQuery = $conn->prepare("INSERT INTO users (firstName, lastName, email, password, role, approved) VALUES (?, ?, ?, ?, ?, ?)");
+        $insertQuery = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, approved) VALUES (?, ?, ?, ?, ?, ?)");
         $insertQuery->bind_param("sssssi", $firstName, $lastName, $email, $password, $role, $approved);
         
         if ($insertQuery->execute()) {
@@ -114,9 +121,6 @@ if (isset($_POST['add_admin'])) {
     <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/dashboard.css">
     <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/manage_admin.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    
-     
 </head>
 <body>
     <div class="dashboard-container">
@@ -152,7 +156,7 @@ if (isset($_POST['add_admin'])) {
                         <div class="admin-avatar">
                             <i class="fas fa-user"></i>
                         </div>
-                        <span id="adminName"><?php echo $user['firstName'] . ' ' . $user['lastName']; ?></span>
+                        <span id="adminName"><?php echo $user['first_name'] . ' ' . $user['last_name']; ?></span>
                         <i class="fas fa-chevron-down"></i>
                     </div>
                 </div>
@@ -219,28 +223,32 @@ if (isset($_POST['add_admin'])) {
                 <h3>Pending Approval Requests <span class="header-count"><?php echo count($pendingAdmins); ?></span></h3>
                 <table id="pendingTable">
                     <thead>
-                        <tr>
-                            <th width="5%">ID</th>
-                            <th width="25%">Name</th>
-                            <th width="30%">Email</th>
-                            <th width="20%">Registered On</th>
-                            <th width="20%">Actions</th>
-                        </tr>
+                    <tr>
+                        <th width="5%">ID</th>
+                        <th width="25%">First Name</th>
+                        <th width="25%">Last Name</th>
+                        <th width="30%">Email</th>
+                        <th width="10%">Role</th>
+                        <th width="10%">Status</th>
+                        <th width="20%">Actions</th>
+                    </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($pendingAdmins as $admin): ?>
                         <tr>
-                            <td><?php echo $admin['Id']; ?></td>
-                            <td><?php echo $admin['firstName'] . ' ' . $admin['lastName']; ?></td>
+                            <td><?php echo $admin['id']; ?></td>
+                            <td><?php echo $admin['first_name']; ?></td>
+                            <td><?php echo $admin['last_name']; ?></td>
                             <td><?php echo $admin['email']; ?></td>
-                            <td><?php echo isset($admin['created_at']) ? date('M d, Y', strtotime($admin['created_at'])) : 'Unknown'; ?></td>
+                            <td><?php echo $admin['role']; ?></td>
+                            <td><span class="status-pending">Pending</span></td>
                             <td>
                                 <form method="post" action="manage_admins.php" style="display:inline;">
-                                    <input type="hidden" name="admin_id" value="<?php echo $admin['Id']; ?>">
+                                    <input type="hidden" name="admin_id" value="<?php echo $admin['id']; ?>">
                                     <button type="submit" name="approve_admin" class="action-btn approve-btn"><i class="fas fa-check"></i> Approve</button>
                                 </form>
                                 <form method="post" action="manage_admins.php" style="display:inline;">
-                                    <input type="hidden" name="admin_id" value="<?php echo $admin['Id']; ?>">
+                                    <input type="hidden" name="admin_id" value="<?php echo $admin['id']; ?>">
                                     <button type="submit" name="delete_admin" class="action-btn delete-btn" onclick="return confirm('Are you sure you want to delete this administrator?')"><i class="fas fa-trash"></i> Delete</button>
                                 </form>
                             </td>
@@ -258,7 +266,8 @@ if (isset($_POST['add_admin'])) {
                     <thead>
                         <tr>
                             <th width="5%">ID</th>
-                            <th width="25%">Name</th>
+                            <th width="25%">First Name</th>
+                            <th width="25%">Last Name</th>
                             <th width="30%">Email</th>
                             <th width="10%">Role</th>
                             <th width="10%">Status</th>
@@ -268,15 +277,16 @@ if (isset($_POST['add_admin'])) {
                     <tbody>
                         <?php foreach ($approvedAdmins as $admin): ?>
                         <tr>
-                            <td><?php echo $admin['Id']; ?></td>
-                            <td><?php echo $admin['firstName'] . ' ' . $admin['lastName']; ?></td>
+                            <td><?php echo $admin['id']; ?></td>
+                            <td><?php echo $admin['first_name']; ?></td>
+                            <td><?php echo $admin['last_name']; ?></td>
                             <td><?php echo $admin['email']; ?></td>
                             <td><?php echo $admin['role'] ?? 'Admin'; ?></td>
                             <td><span class="status-approved">Approved</span></td>
                             <td>
-                                <?php if ($admin['Id'] != $user['Id']): ?>
+                                <?php if ($admin['id'] != $user['id']): ?>
                                 <form method="post" action="manage_admins.php" style="display:inline;">
-                                    <input type="hidden" name="admin_id" value="<?php echo $admin['Id']; ?>">
+                                    <input type="hidden" name="admin_id" value="<?php echo $admin['id']; ?>">
                                     <button type="submit" name="delete_admin" class="action-btn delete-btn" onclick="return confirm('Are you sure you want to delete this administrator?')"><i class="fas fa-trash"></i> Delete</button>
                                 </form>
                                 <?php else: ?>

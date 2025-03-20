@@ -7,7 +7,7 @@ include("connect.php");
 
 // Check if user is logged in
 if (!isset($_SESSION['email'])) {
-    header("Location: login.php");
+    header("Location: /LoginFarmer/Laravel-capstone/public/admin-dashboard/html/login.php");
     exit();
 }
 
@@ -98,12 +98,12 @@ $trendIcon = "fa-arrow-up";
                             <i class="fas fa-user"></i>
                         </div>
                         <span id="adminName">
-                            <?php 
+                        <?php 
                                 if (isset($_SESSION['email'])) {
                                     $email = $_SESSION['email'];
                                     $query = mysqli_query($conn, "SELECT * FROM `users` WHERE email='$email'");
                                     if ($row = mysqli_fetch_array($query)) {
-                                        echo htmlspecialchars($row['firstName'] . ' ' . $row['lastName']);
+                                        echo htmlspecialchars($row['first_name'] . ' ' . $row['last_name']);
                                     }
                                 }
                             ?>
