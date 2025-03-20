@@ -1,0 +1,279 @@
+/* Form section styling */
+.form-section {
+    background: white;
+    padding: 2.5%; /* Percentage-based padding */
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 25px;
+    max-width: 1400px; /* Maximum width for very large screens */
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.form-section h3 {
+    font-size: calc(16px + 0.2vw); /* Responsive font size */
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+}
+
+label {
+    font-size: calc(14px + 0.1vw);
+    margin-bottom: 8px;
+    color: #555;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+textarea,
+select {
+    padding: 14px;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: calc(14px + 0.1vw);
+    transition: border-color 0.3s;
+    width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+textarea:focus,
+select:focus {
+    border-color: #335c18;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(51, 92, 24, 0.1);
+}
+
+textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+select {
+    appearance: none;
+    background-image: url("data:image/svg+xml;utf8,<svg fill='%23333' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+}
+
+button[type="submit"] {
+    background-color: #335c18;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 5px;
+    margin-top: 15px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+    font-size: calc(14px + 0.1vw);
+    width: 100%;
+    max-width: 300px; /* Limit button width */
+    align-self: flex-start; /* Align button to left */
+}
+
+button[type="submit"]:hover {
+    background-color: #406f1f;
+}
+
+/* Table section styling */
+.table-section {
+    background: white;
+    padding: 2.5%;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+    overflow-x: auto; /* Enable horizontal scrolling for wide tables */
+}
+
+.table-section h3 {
+    font-size: calc(16px + 0.2vw);
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #333;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px; /* Ensure table doesn't get too narrow */
+}
+
+table th, table td {
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+table th {
+    font-weight: 600;
+    color: #333;
+    background-color: #f9fafb;
+    font-size: calc(14px + 0.1vw);
+}
+
+table td {
+    font-size: calc(14px + 0.1vw);
+}
+
+table tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Actions column styling */
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.edit-btn, .delete-btn, .action-btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: calc(12px + 0.1vw);
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    transition: all 0.3s;
+}
+
+.edit-btn {
+    background-color: #f0f0f0;
+    color: #333;
+}
+
+.edit-btn:hover {
+    background-color: #ddd;
+}
+
+.delete-btn, .action-btn {
+    background-color: #f8d7da;
+    color: #842029;
+}
+
+.delete-btn:hover, .action-btn:hover {
+    background-color: #f5c2c7;
+}
+
+/* Add styling for larger screens */
+@media (min-width: 1400px) {
+    .dashboard-content {
+        padding: 30px;
+    }
+    
+    .form-section, .table-section {
+        padding: 35px;
+    }
+    
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    textarea,
+    select {
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    button[type="submit"] {
+        padding: 16px;
+        font-size: 16px;
+    }
+    
+    table th, table td {
+        padding: 18px;
+    }
+}
+
+/* Responsive design for smaller screens */
+@media (max-width: 992px) {
+    .dashboard-content {
+        padding: 15px;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        width: 70px;
+    }
+    
+    .logo-container {
+        justify-content: center;
+        padding: 15px 10px;
+    }
+    
+    .sidebar h2, .sidebar-footer p {
+        display: none;
+    }
+    
+    .sidebar ul li a {
+        padding: 15px;
+        justify-content: center;
+    }
+    
+    .sidebar ul li a i {
+        margin-right: 0;
+        font-size: 18px;
+    }
+    
+    .sidebar ul li a span {
+        display: none;
+    }
+    
+    .dashboard-content {
+        margin-left: 70px;
+        width: calc(100% - 70px);
+    }
+    
+    .form-section, .table-section {
+        padding: 15px;
+    }
+    
+    button[type="submit"] {
+        width: 100%;
+        max-width: none;
+    }
+}
+
+@media (max-width: 576px) {
+    .dashboard-content {
+        padding: 10px;
+    }
+    
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    table {
+        font-size: 14px;
+        min-width: 500px;
+    }
+    
+    table th, table td {
+        padding: 8px 10px;
+    }
+    
+    .actions {
+        flex-direction: column;
+        gap: 5px;
+    }
+}

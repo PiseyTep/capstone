@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgriTech Pioneer - Manage Products</title>
+    <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/manage_product.css">
+    <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="logo-container">
+                <i class="fas fa-seedling"></i>
+                <h2>AgriTech Pioneer</h2>
+            </div>
+            <ul>
+                <li><a href="index.php"><i class="fas fa-home"></i> Dashboard</a></li>
+                <li><a href="rentals.html"><i class="fas fa-exchange-alt"></i> Track Rentals</a></li>
+                <li><a href="products.html" class="active"><i class="fas fa-tractor"></i> Manage Products</a></li>
+                <li><a href="post_video.html"><i class="fas fa-video"></i> Post Video</a></li>
+                <li><a href="manage_admins.php" class="active"><i class="fas fa-user-shield"></i> Manage Admins</a></li>
+                <li><a href="logout.php" id="logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+            </ul>
+            <div class="sidebar-footer">
+                <p>&copy; 2025 AgriTech Pioneer</p>
+            </div>
+        </aside>
+
+        <main class="dashboard-content">
+            <header>
+                <div class="header-title">
+                    <h2><i class="fas fa-tractor"></i> Manage Products</h2>
+                </div>
+                <div class="profile">
+                    <div class="notification">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-count">3</span>
+                    </div>
+                    <div class="admin-profile">
+                        <div class="admin-avatar">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span id="adminName">Admin User</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
+                </div>
+            </header>
+
+            <section class="form-section">
+                <h3>Add New Product</h3>
+                <form id="productForm">
+                    <input type="text" id="productName" placeholder="Product Name" required>
+                    <input type="text" id="productType" placeholder="Type (e.g., Tractor, Harvester)" required>
+                    <input type="number" id="productPrice" placeholder="Price per hour" required>
+                    <textarea id="productDescription" placeholder="Description" required></textarea>
+                    
+                    <!-- Image upload field -->
+                    <div class="image-upload-container">
+                        <div class="file-input-wrapper">
+                            <span class="file-input-button"><i class="fas fa-upload"></i> Choose Product Image</span>
+                            <input type="file" id="productImage" accept="image/*">
+                        </div>
+                        <span class="file-name" id="fileName">No file chosen</span>
+                        <img id="imagePreview" class="image-preview" src="" alt="Image Preview">
+                    </div>
+                    
+                    <button type="submit">Add Product</button>
+                </form>
+            </section>
+
+            <section class="table-section">
+                <h3>Product List</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>Name</th>
+                            <th>Type</th>
+                            <th>Price</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTable">
+                        <!-- Product rows will be inserted here -->
+                    </tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // Image preview functionality
+        document.getElementById('productImage').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById('fileName').textContent = file.name;
+                
+                // Create image preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.getElementById('imagePreview');
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                document.getElementById('fileName').textContent = 'No file chosen';
+                document.getElementById('imagePreview').style.display = 'none';
+            }
+        });
+
+        // Fetch the product list on page load
+        window.onload = function() {
+            fetchProducts();
+        };
+
+        // Fetch products from the database
+        function fetchProducts() {
+            fetch('/api/products')
+                .then(response => response.json())
+                .then(products => {
+                    const productTable = document.getElementById('productTable');
+                    productTable.innerHTML = ''; // Clear existing products
+                    products.forEach(product => {
+                        const row = document.createElement('tr');
+                        
+                        // Determine image source - use placeholder if no image
+                        const imageSrc = product.image_url 
+                            ? product.image_url 
+                            : 'https://via.placeholder.com/60x60?text=No+Image';
+                        
+                        row.innerHTML = `
+                            <td><img src="${imageSrc}" alt="${product.name}" class="product-image-thumbnail"></td>
+                            <td>${product.name}</td>
+                            <td>${product.type}</td>
+                            <td>$${product.price}</td>
+                            <td>
+                                <button class="action-btn" onclick="deleteProduct(${product.id})">Delete</button>
+                            </td>
+                        `;
+                        productTable.appendChild(row);
+                    });
+                })
+                .catch(error => console.error('Error fetching products:', error));
+        }
+
+        // Add product function
+        document.getElementById('productForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const name = document.getElementById('productName').value;
+            const type = document.getElementById('productType').value;
+            const price = document.getElementById('productPrice').value;
+            const description = document.getElementById('productDescription').value;
+            const imageFile = document.getElementById('productImage').files[0];
+
+            // Create FormData object to handle file upload
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('type', type);
+            formData.append('price', price);
+            formData.append('description', description);
+            
+            // Add image if selected
+            if (imageFile) {
+                formData.append('image', imageFile);
+            }
+
+            // Send product data to the backend
+            fetch('/api/products', {
+                method: 'POST',
+                body: formData // FormData handles content-type automatically
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                fetchProducts(); // Refresh the product list after adding a new product
+                document.getElementById('productForm').reset(); // Reset the form
+                document.getElementById('imagePreview').style.display = 'none';
+                document.getElementById('fileName').textContent = 'No file chosen';
+            })
+            .catch(error => {
+                console.error('Error adding product:', error);
+                alert('Error adding product');
+            });
+        });
+
+        // Delete product function
+        function deleteProduct(productId) {
+            if(confirm('Are you sure you want to delete this product?')) {
+                // Send delete request to the backend
+                fetch(`/api/products/${productId}`, {
+                    method: 'DELETE'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    alert(data.message);
+                    fetchProducts(); // Refresh the product list after deleting a product
+                })
+                .catch(error => {
+                    console.error('Error deleting product:', error);
+                    alert('Error deleting product');
+                });
+            }
+        }
+
+        // Logout functionality
+        document.getElementById("logout").addEventListener("click", function() {
+            localStorage.removeItem("adminToken");
+            window.location.href = "login.php";
+        });
+    </script>
+  <script src="/LoginFarmer/Laravel-capstone/public/admin-dashboard/js/script.js"></script>
+</body>
+</html>

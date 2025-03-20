@@ -1,0 +1,144 @@
+/* General Reset */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+body {
+    display: flex;
+    background-color: #f5f7fa; /* Standardized background color */
+}
+
+/* Sidebar Styling */
+.sidebar {
+    width: 260px; /* Standardized width */
+    background-color: #2c5e1a; /* Main green color */
+    color: white;
+    height: 100vh;
+    padding: 20px 0;
+    position: fixed;
+}
+
+.sidebar h2 {
+    text-align: center;
+    margin-bottom: 20px;
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    margin: 5px 0;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: white;
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-radius: 0;
+    transition: 0.3s;
+    font-size: 15px;
+}
+
+.sidebar ul li a.active, .sidebar ul li a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-left: 4px solid #9be876; /* Secondary green color */
+}
+
+.sidebar-footer {
+    padding: 15px 20px;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255, 255, 255, 0.6);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Header styling */
+header {
+    background: white;
+    padding: 15px 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    margin-bottom: 20px;
+    color: #333; /* Standardized text color */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Table Section */
+.table-section {
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.table-section h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.table-section table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table-section table thead {
+    background: #f9fafb; /* Lighter background for table header */
+}
+
+.table-section table th {
+    font-weight: 600;
+    color: #333;
+    padding: 12px 15px;
+    text-align: left;
+}
+
+.table-section table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.table-section table tbody tr:hover {
+    background-color: #f9fafb;
+}
+
+/* Actions */
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.actions button {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.approve-btn {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.reject-btn {
+    background-color: #d9534f;
+    color: white;
+}
+
+.actions button:hover {
+    opacity: 0.8;
+}
