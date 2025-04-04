@@ -1,36 +1,60 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
 session_start();
-include("connect.php");
+include("../connect.php");
 
+// API Base URL
+$api_base_url = "http://172.20.10.3:8000/api";
+ 
 // Check if user is logged in
-if (!isset($_SESSION['email'])) {
-    header("Location: /LoginFarmer/Laravel-capstone/public/admin-dashboard/html/login.php");
+if (!isset($_SESSION['email']) || !isset($_SESSION['api_token'])) {
+    header("Location: login.php");
     exit();
 }
 
+function api_request($endpoint, $method = 'GET', $data = null) {
+    global $api_base_url;
+    
+    $ch = curl_init($api_base_url . $endpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    
+    $headers = [
+        'Authorization: Bearer ' . $_SESSION['api_token'],
+        'Accept: application/json'
+    ];
+    
+    if ($data) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $headers[] = 'Content-Type: application/json';
+    }
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    
+    $response = curl_exec($ch);
+    $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    return [
+        'status' => $statusCode,
+        'data' => json_decode($response, true)
+    ];
+}
+
 // Check if user is super admin
-$email = $_SESSION['email'];
-$query = "SELECT * FROM `users` WHERE email=?";
-$stmt = mysqli_prepare($conn, $query);
-mysqli_stmt_bind_param($stmt, "s", $email);
-mysqli_stmt_execute($stmt);
-$result = mysqli_stmt_get_result($stmt);
-$user = mysqli_fetch_array($result);
-$isSuperAdmin = ($user && isset($user['role']) && $user['role'] === 'super_admin');
+$isSuperAdmin = ($_SESSION['role'] === 'super_admin');
 
-// Get admin count
-$adminCountQuery = mysqli_query($conn, "SELECT COUNT(*) as count FROM `users`");
-$adminCountResult = mysqli_fetch_assoc($adminCountQuery);
-$totalAdmins = $adminCountResult['count'];
+// Get dashboard stats
+$stats_response = api_request('/admin/stats');
+$stats = [];
 
-// For the trend percentage, you can use a static value or calculate it
-// This is just a placeholder - customize as needed
-$percentChange = 5;
-$trendClass = "positive";
-$trendIcon = "fa-arrow-up";
+if ($stats_response['status'] === 200) {
+    $stats = $stats_response['data']['data'] ?? [];
+}
+
+// Get pending admin count
+$pendingAdmins = $stats['pendingAdmins'] ?? 0;
+
+// Rest of your index.php code...
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -38,7 +62,7 @@ $trendIcon = "fa-arrow-up";
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AgriTech Pioneer - Admin Dashboard</title>
-    <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/dashboard.css">
+    <link rel="stylesheet" href="/admin-dashboard/css/dashboard.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         .alert {
@@ -76,6 +100,7 @@ $trendIcon = "fa-arrow-up";
                 <?php if ($isSuperAdmin): ?>
                 <li><a href="manage_admins.php"><i class="fas fa-user-shield"></i> Manage Admins</a></li>
                 <?php endif; ?>
+                <li><a href="manage_farmers.php" class="active"><i class="fas fa-user-shield"></i> Farmer Management</a></li>
                 <li><a href="logout.php" id="logout"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
             </ul>
             <div class="sidebar-footer">

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:login_farmer/models/booking_model.dart';
+import 'package:login_farmer/pages/tractor.dart';
 import 'package:login_farmer/service/booking_service.dart';
 
 class HistoryPage extends StatefulWidget {
@@ -13,6 +14,8 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   List<BookingModel> bookings = [];
   bool isLoading = true;
+  final BookingService _bookingService =
+      BookingService(); // Add service instance
 
   @override
   void initState() {
@@ -24,7 +27,8 @@ class _HistoryPageState extends State<HistoryPage> {
     setState(() => isLoading = true);
 
     try {
-      final loadedBookings = await BookingService.getBookings();
+      // Use the BookingService to get bookings
+      final loadedBookings = await _bookingService.getBookings();
       setState(() => bookings = loadedBookings);
     } catch (error) {
       _showErrorSnackbar('Failed to load bookings. Please try again.');
@@ -214,27 +218,22 @@ class _HistoryPageState extends State<HistoryPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancel Booking'),
-        content: SingleChildScrollView(
-          child: ListBody(
-            children: const <Widget>[
-              Text('Are you sure you want to cancel this booking?'),
-            ],
-          ),
-        ),
+        content: const Text('Are you sure you want to cancel this booking?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(), // Close the dialog
+            onPressed: () => Navigator.of(context).pop(),
             child: const Text('No'),
           ),
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop(); // Close confirmation dialog
+              Navigator.of(context).pop();
 
               try {
-                if (booking.status == 'Scheduled' &&
-                    !booking.isAcceptedByAdmin) {
-                  await BookingService.updateBookingStatus(
-                      booking.id, 'Cancelled');
+                if (booking.status == 'Scheduled' ||
+                    booking.status == 'Pending' ||
+                    booking.status == 'Upcoming') {
+                  // Use the booking service to cancel
+                  await _bookingService.cancelBooking(booking.id);
                   _showErrorSnackbar('Booking cancelled successfully');
                   _loadBookings(); // Refresh bookings
                 } else {
@@ -242,7 +241,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 }
               } catch (error) {
                 _showErrorSnackbar(
-                    'Failed to cancel booking. Please try again.');
+                    'Failed to cancel booking: ${error.toString()}');
               }
             },
             child: const Text('Yes', style: TextStyle(color: Colors.red)),
@@ -369,11 +368,18 @@ class _HistoryPageState extends State<HistoryPage> {
               style: TextStyle(fontSize: 18, color: Colors.grey)),
           const SizedBox(height: 8),
           ElevatedButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(
+              context,
+              MaterialPageRoute(builder: (context) => TractorCategoriesPage()),
+            ),
             style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF375534)),
-            child: const Text('Book a Tractor',
-                style: TextStyle(color: Colors.white)),
+              backgroundColor: const Color(0xFF375534),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+            child: const Text(
+              'Book a Tractor',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
           ),
         ],
       ),

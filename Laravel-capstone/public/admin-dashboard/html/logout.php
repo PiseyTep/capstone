@@ -1,9 +1,25 @@
 <?php
 session_start();
 
+// API Base URL
+$api_base_url = "http://172.20.10.3:8000/api";
+
 // Check if the logout confirmation button was pressed
 if (isset($_POST['confirm_logout'])) {
-    // If confirmed, destroy the session and redirect
+    // Call API to logout if we have a token
+    if (isset($_SESSION['api_token'])) {
+        $ch = curl_init($api_base_url . "/logout");
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Authorization: Bearer ' . $_SESSION['api_token'],
+            'Accept: application/json'
+        ]);
+        curl_exec($ch);
+        curl_close($ch);
+    }
+    
+    // Destroy the session and redirect
     session_unset();
     session_destroy();
     header("Location: login.php");

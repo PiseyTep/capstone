@@ -1,0 +1,54 @@
+[2025-04-01 16:04:19] Full Request: Array
+(
+    [DOCUMENT_ROOT] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public
+    [REMOTE_ADDR] => 172.20.10.3
+    [REMOTE_PORT] => 60719
+    [SERVER_SOFTWARE] => PHP/8.4.4 (Development Server)
+    [SERVER_PROTOCOL] => HTTP/1.1
+    [SERVER_NAME] => 0.0.0.0
+    [SERVER_PORT] => 8000
+    [REQUEST_URI] => /admin-dashboard/html/farmer/register.php
+    [REQUEST_METHOD] => POST
+    [SCRIPT_NAME] => /admin-dashboard/html/farmer/register.php
+    [SCRIPT_FILENAME] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public/admin-dashboard/html/farmer/register.php
+    [PHP_SELF] => /admin-dashboard/html/farmer/register.php
+    [HTTP_USER_AGENT] => Dart/3.7 (dart:io)
+    [CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_ACCEPT] => application/json
+    [HTTP_ACCEPT_ENCODING] => gzip
+    [CONTENT_LENGTH] => 116
+    [HTTP_CONTENT_LENGTH] => 116
+    [HTTP_HOST] => 172.20.10.3:8000
+    [REQUEST_TIME_FLOAT] => 1743523459.7901
+    [REQUEST_TIME] => 1743523459
+)
+
+Input Data: {"first_name":"kiminato","last_name":"look","email":"Kim@gmail.com","password":"Kim@123","phone_number":"098765432"}
+[2025-04-01 16:49:11] Full Request: Array
+(
+    [DOCUMENT_ROOT] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public
+    [REMOTE_ADDR] => 172.20.10.3
+    [REMOTE_PORT] => 62376
+    [SERVER_SOFTWARE] => PHP/8.4.4 (Development Server)
+    [SERVER_PROTOCOL] => HTTP/1.1
+    [SERVER_NAME] => 0.0.0.0
+    [SERVER_PORT] => 8000
+    [REQUEST_URI] => /admin-dashboard/html/farmer/register.php
+    [REQUEST_METHOD] => POST
+    [SCRIPT_NAME] => /admin-dashboard/html/farmer/register.php
+    [SCRIPT_FILENAME] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public/admin-dashboard/html/farmer/register.php
+    [PHP_SELF] => /admin-dashboard/html/farmer/register.php
+    [HTTP_USER_AGENT] => Dart/3.7 (dart:io)
+    [CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_ACCEPT] => application/json
+    [HTTP_ACCEPT_ENCODING] => gzip
+    [CONTENT_LENGTH] => 112
+    [HTTP_CONTENT_LENGTH] => 112
+    [HTTP_HOST] => 172.20.10.3:8000
+    [REQUEST_TIME_FLOAT] => 1743526151.6221
+    [REQUEST_TIME] => 1743526151
+)
+
+Input Data: {"first_name":"kimo","last_name":"","email":"Kimimi@gmail.com","password":"Kim@1234","phone_number":"098765432"}

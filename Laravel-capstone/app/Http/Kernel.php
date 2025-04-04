@@ -6,25 +6,20 @@ use Illuminate\Foundation\Http\Kernel as HttpKernel;
 
 class Kernel extends HttpKernel
 {
+    /**
+     * Global HTTP middleware stack.
+     */
     protected $middleware = [
-        // Global middleware
         \Illuminate\Http\Middleware\HandleCors::class,
         \Illuminate\Foundation\Http\Middleware\CheckForMaintenanceMode::class,
-        \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+        \App\Http\Middleware\TrimStrings::class,
+        \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
     ];
 
-    protected $middlewareAliases = [
-        'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
-        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
-        'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
-        'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
-        
-        // Add your role middleware here
-        'farmer' => \App\Http\Middleware\FarmerMiddleware::class,
-        'admin' => \App\Http\Middleware\AdminMiddleware::class,
-        'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
-    ];
-
+    /**
+     * Route middleware groups.
+     */
     protected $middlewareGroups = [
         'web' => [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
@@ -35,5 +30,24 @@ class Kernel extends HttpKernel
             'throttle:api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ],
+    ];
+
+    /**
+     * Route middleware aliases.
+     */
+    protected $middlewareAliases = [
+        'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+        'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+        'auth:sanctum' => \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        'bindings' => \Illuminate\Routing\Middleware\SubstituteBindings::class,
+
+        // Custom middleware
+        'role' => \App\Http\Middleware\RoleMiddleware::class,
+        'firebase.auth' => \App\Http\Middleware\VerifyFirebaseToken::class,
+
+        // Role-based shortcuts
+        'farmer' => \App\Http\Middleware\FarmerMiddleware::class,
+        'admin' => \App\Http\Middleware\AdminMiddleware::class,
+        'super_admin' => \App\Http\Middleware\SuperAdminMiddleware::class,
     ];
 }

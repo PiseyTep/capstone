@@ -1,37 +1,43 @@
-// In video_model.dart
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class VideoModel {
-  final String id;
+  final int id;
   final String title;
   final String description;
-  final String youtubeUrl;
-  final String thumbnailUrl;
-  final DateTime uploadDate;
-  final bool isDefault;
+  final String url;
+  final String createdAt;
 
   VideoModel({
     required this.id,
     required this.title,
     required this.description,
-    required this.youtubeUrl,
-    required this.thumbnailUrl,
-    required this.uploadDate,
-    this.isDefault = false,
+    required this.url,
+    required this.createdAt,
   });
 
-  factory VideoModel.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+  factory VideoModel.fromJson(Map<String, dynamic> json) {
     return VideoModel(
-      id: doc.id,
-      title: data['title'] ?? 'No Title',
-      description: data['description'] ?? 'No Description',
-      youtubeUrl: data['youtubeUrl'] ?? '',
-      thumbnailUrl: data['thumbnailUrl'] ?? '',
-      uploadDate: data['uploadDate'] != null
-          ? (data['uploadDate'] as Timestamp).toDate()
-          : DateTime.now(),
-      isDefault: data['isDefault'] ?? false,
+      id: json['id'],
+      title: json['title'],
+      description: json['description'] ?? '',
+      url: json['url'],
+      createdAt: json['created_at'],
     );
+  }
+
+  // Helper to get YouTube video ID
+  String? get youtubeId {
+    RegExp regExp = RegExp(
+      r"(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})",
+    );
+    Match? match = regExp.firstMatch(url);
+    return match?.group(1);
+  }
+
+  // Get YouTube thumbnail URL
+  String get thumbnailUrl {
+    final id = youtubeId;
+    if (id != null) {
+      return 'https://img.youtube.com/vi/$id/hqdefault.jpg';
+    }
+    return 'https://via.placeholder.com/480x360?text=Video';
   }
 }

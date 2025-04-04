@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://127.0.0.1:8000/api";
+const API_BASE_URL = "http://172.20.10.3:8000/api";
 
 // Check if DOM is loaded before accessing elements
 document.addEventListener("DOMContentLoaded", function() {
@@ -86,6 +86,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 await updateRentalStatus(id, "approved");
             } else if (e.target.classList.contains("reject-btn")) {
                 await updateRentalStatus(id, "rejected");
+            } else if (e.target.classList.contains("details-btn")) {
+                showRentalDetails(id);
             }
         });
     }
@@ -98,13 +100,14 @@ document.addEventListener("DOMContentLoaded", function() {
             e.preventDefault();
             const title = document.getElementById("title").value;
             const video_url = document.getElementById("video_url").value;
+            const description = document.getElementById("video_description")?.value || '';
             
             if (!title || !video_url) {
                 alert("Please enter both title and video URL.");
                 return;
             }
             
-            await addVideo(title, video_url);
+            await addVideo(title, video_url, description);
             fetchVideos();
         });
         
@@ -117,7 +120,43 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 });
-// Fetch admin count for dashboard
+
+// Helper functions
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    if (isNaN(date)) return dateString;
+    return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric' 
+    });
+}
+
+function capitalizeFirstLetter(string) {
+    if (!string) return '';
+    return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `notification ${type}`;
+    notification.innerHTML = message;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => {
+            document.body.removeChild(notification);
+        }, 300);
+    }, 3000);
+}
+
+// Dashboard functions
 async function fetchAdminCount() {
     try {
         const response = await fetch(`${API_BASE_URL}/admin-count`);
@@ -130,19 +169,16 @@ async function fetchAdminCount() {
     }
 }
 
-// Update fetchDashboardStats to include admin count
 async function fetchDashboardStats() {
     try {
         const response = await fetch(`${API_BASE_URL}/stats`);
         const data = await response.json();
         
-        // Update admin count
         if (document.getElementById('adminAccount')) {
             const adminCount = await fetchAdminCount();
             document.getElementById('adminAccount').textContent = adminCount;
         }
         
-        // Update other dashboard stats
         if (document.getElementById('totalFarmers'))
             document.getElementById('totalFarmers').textContent = data.totalFarmers || 0;
         if (document.getElementById('totalMachines'))
@@ -150,7 +186,6 @@ async function fetchDashboardStats() {
         if (document.getElementById('activeRentals'))
             document.getElementById('activeRentals').textContent = data.activeRentals || 0;
             
-        // If the updateChartData function exists, update chart
         if (window.updateChartData && data.monthlyRentals) {
             window.updateChartData(data.monthlyRentals);
         }
@@ -158,204 +193,334 @@ async function fetchDashboardStats() {
         console.error("Error fetching dashboard data:", error);
     }
 }
-// Fetch products
+
+// Product functions
 async function fetchProducts() {
     try {
         const response = await fetch(`${API_BASE_URL}/products`);
         if (!response.ok) throw new Error('Failed to fetch products');
-        const data = await response.json();
-        return data;
+        return await response.json();
     } catch (error) {
         console.error("Error fetching products:", error);
-        alert("Error fetching products: " + error.message);
+        showNotification("Error fetching products: " + error.message, 'error');
+        return [];
     }
 }
 
-// Add a new product
 async function addProduct(product) {
     try {
         const response = await fetch(`${API_BASE_URL}/products`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem('adminToken')}`
             },
             body: JSON.stringify(product),
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
-        alert("Product added successfully!");
+        showNotification("Product added successfully!", 'success');
     } catch (error) {
         console.error("Error adding product:", error);
-        alert("Failed to add product: " + error.message);
+        showNotification("Failed to add product: " + error.message, 'error');
     }
 }
 
-// Delete product
 async function deleteProduct(id) {
     try {
         const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-            method: "DELETE"
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem('adminToken')}`
+            }
         });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.message);
-        alert("Product deleted successfully!");
+        if (!response.ok) {
+            const data = await response.json();
+            throw new Error(data.message);
+        }
+        showNotification("Product deleted successfully!", 'success');
     } catch (error) {
         console.error("Error deleting product:", error);
-        alert("Failed to delete product: " + error.message);
+        showNotification("Failed to delete product: " + error.message, 'error');
     }
 }
 
-// Fetch and display products
 async function fetchAndDisplayProducts() {
     const products = await fetchProducts();
     const productTable = document.getElementById("productTable");
     if (!products || !productTable) return;
     
-    productTable.innerHTML = "";
-    products.forEach((product) => {
-        const imageSrc = product.image_url 
-            ? product.image_url 
-            : 'https://via.placeholder.com/60x60?text=No+Image';
-            
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td><img src="${imageSrc}" alt="${product.name}" class="product-image-thumbnail"></td>
-            <td>${product.name}</td>
-            <td>${product.type}</td>
-            <td>$${product.price}</td>
-            <td>
-                <button class="action-btn" onclick="deleteProduct(${product.id})">Delete</button>
-            </td>
-        `;
-        productTable.appendChild(row);
-    });
+    productTable.innerHTML = products.length === 0 ? 
+        `<tr><td colspan="5" class="text-center">No products found</td></tr>` : 
+        products.map(product => {
+            const imageSrc = product.image_url || 'https://via.placeholder.com/60x60?text=No+Image';
+            return `
+                <tr>
+                    <td><img src="${imageSrc}" alt="${product.name}" class="product-image-thumbnail"></td>
+                    <td>${product.name}</td>
+                    <td>${product.type}</td>
+                    <td>$${product.price}</td>
+                    <td>
+                        <button class="delete-btn" data-id="${product.id}">Delete</button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
 }
 
-// Fetch dashboard stats
-async function fetchDashboardStats() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/stats`);
-        const data = await response.json();
-        
-        // Update dashboard stats
-        if (document.getElementById('adminAccount'))
-            document.getElementById('adminAccount').textContent = data.adminAccount || 0;
-        if (document.getElementById('totalFarmers'))
-            document.getElementById('totalFarmers').textContent = data.totalFarmers || 0;
-        if (document.getElementById('totalMachines'))
-            document.getElementById('totalMachines').textContent = data.totalMachines || 0;
-        if (document.getElementById('activeRentals'))
-            document.getElementById('activeRentals').textContent = data.activeRentals || 0;
-            
-        // If the updateChartData function exists, update chart
-        if (window.updateChartData && data.monthlyRentals) {
-            window.updateChartData(data.monthlyRentals);
-        }
-    } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-    }
-}
-
-// Fetch and display rentals
+// Rental functions
 async function fetchRentals() {
     try {
-        const response = await fetch(`${API_BASE_URL}/rentals`);
-        const rentals = await response.json();
-        const rentalTable = document.getElementById("rentalTable");
-        if (!rentals || !rentalTable) return;
+        const token = localStorage.getItem('adminToken');
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
         
-        rentalTable.innerHTML = "";
-        rentals.forEach((rental) => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${rental.farmer_name}</td>
-                <td>${rental.product_name}</td>
-                <td>${rental.rental_date}</td>
-                <td>${rental.status}</td>
-                <td>
-                    <button class="approve-btn" data-id="${rental.id}">Approve</button>
-                    <button class="reject-btn" data-id="${rental.id}">Reject</button>
-                </td>
-            `;
-            rentalTable.appendChild(row);
-        });
+        const response = await fetch(`${API_BASE_URL}/admin/rentals`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch rentals');
+        
+        const result = await response.json();
+        const rentals = result.data || [];
+        const rentalTable = document.getElementById("rentalTable");
+        
+        if (!rentalTable) return;
+        
+        rentalTable.innerHTML = rentals.length === 0 ? 
+            `<tr><td colspan="5" class="text-center">No rental requests found</td></tr>` : 
+            rentals.map(rental => {
+                const statusClass = rental.status ? `status-${rental.status}` : 'status-pending';
+                const statusText = capitalizeFirstLetter(rental.status || 'pending');
+                
+                return `
+                    <tr class="${rental.status}-row">
+                        <td>${rental.farmer_name || 'N/A'}</td>
+                        <td>${rental.product_name || 'N/A'}</td>
+                        <td>${formatDate(rental.rental_date)}</td>
+                        <td>
+                            <span class="status-badge ${statusClass}">${statusText}</span>
+                        </td>
+                        <td class="action-buttons">
+                            ${getRentalActionButtons(rental)}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
     } catch (error) {
         console.error("Error fetching rentals:", error);
+        const rentalTable = document.getElementById("rentalTable");
+        if (rentalTable) {
+            rentalTable.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center">Error loading rentals: ${error.message}</td>
+                </tr>
+            `;
+        }
     }
 }
 
-// Update rental status
+function getRentalActionButtons(rental) {
+    const id = rental.id;
+    let buttons = `<button class="details-btn" data-id="${id}">Details</button>`;
+    
+    if (rental.status === 'pending') {
+        buttons += `
+            <button class="approve-btn" data-id="${id}">Approve</button>
+            <button class="reject-btn" data-id="${id}">Reject</button>
+        `;
+    } else if (rental.status === 'approved') {
+        buttons += `<button class="complete-btn" data-id="${id}">Complete</button>`;
+    }
+    
+    return buttons;
+}
+
 async function updateRentalStatus(id, status) {
     try {
-        const response = await fetch(`${API_BASE_URL}/rentals/${id}`, {
+        const token = localStorage.getItem('adminToken');
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": token ? `Bearer ${token}` : ''
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/admin/rentals/${id}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: headers,
             body: JSON.stringify({ status })
         });
+        
         const data = await response.json();
-        if (!response.ok) throw new Error(data.message);
-        alert(`Rental ${status} successfully!`);
+        if (!response.ok) throw new Error(data.message || 'Failed to update rental status');
+        
+        showNotification(`Rental ${status} successfully!`, 'success');
         fetchRentals();
     } catch (error) {
         console.error(`Error updating rental status:`, error);
-        alert(`Failed to update rental status`);
+        showNotification(`Failed to update rental status: ${error.message}`, 'error');
     }
 }
 
-// Fetch and display videos
+async function showRentalDetails(id) {
+    try {
+        const rental = await fetchRentalDetails(id);
+        if (!rental) return;
+        
+        const modalHTML = `
+            <div class="modal-overlay" id="rentalDetailModal">
+                <div class="modal-content">
+                    <span class="close-modal">&times;</span>
+                    <h2>Rental Request Details</h2>
+                    
+                    <div class="detail-section">
+                        <h3>Customer Information</h3>
+                        <p><strong>Name:</strong> ${rental.farmer_name || 'N/A'}</p>
+                        <p><strong>Phone:</strong> ${rental.farmer_phone || 'N/A'}</p>
+                        <p><strong>Address:</strong> ${rental.farmer_address || 'N/A'}</p>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3>Rental Information</h3>
+                        <p><strong>Product:</strong> ${rental.product_name || 'N/A'}</p>
+                        <p><strong>Start Date:</strong> ${formatDate(rental.rental_date)}</p>
+                        <p><strong>Return Date:</strong> ${formatDate(rental.return_date)}</p>
+                        <p><strong>Land Size:</strong> ${rental.land_size || 'N/A'} ${rental.land_size_unit || 'Acres'}</p>
+                        <p><strong>Total Price:</strong> $${parseFloat(rental.total_price || 0).toFixed(2)}</p>
+                        <p><strong>Status:</strong> 
+                            <span class="status-badge status-${rental.status}">
+                                ${capitalizeFirstLetter(rental.status)}
+                            </span>
+                        </p>
+                    </div>
+                    
+                    <div class="detail-section">
+                        <h3>Notes</h3>
+                        <p>${rental.notes || 'No notes available'}</p>
+                    </div>
+                    
+                    <div class="modal-actions">
+                        ${getModalActionButtons(rental)}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = document.getElementById('rentalDetailModal');
+        
+        modal.querySelector('.close-modal').addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        modal.querySelectorAll('.action-btn').forEach(button => {
+            button.addEventListener('click', async () => {
+                const action = button.getAttribute('data-action');
+                await updateRentalStatus(id, action);
+                document.body.removeChild(modal);
+            });
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                document.body.removeChild(modal);
+            }
+        });
+    } catch (error) {
+        console.error("Error showing rental details:", error);
+        showNotification(`Error loading rental details: ${error.message}`, 'error');
+    }
+}
+
+async function fetchRentalDetails(id) {
+    try {
+        const token = localStorage.getItem('adminToken');
+        const headers = token ? { "Authorization": `Bearer ${token}` } : {};
+        
+        const response = await fetch(`${API_BASE_URL}/admin/rentals/${id}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch rental details');
+        return await response.json();
+    } catch (error) {
+        console.error("Error fetching rental details:", error);
+        throw error;
+    }
+}
+
+function getModalActionButtons(rental) {
+    if (!rental) return '';
+    
+    if (rental.status === 'pending') {
+        return `
+            <button class="action-btn approve" data-action="approved" data-id="${rental.id}">Approve</button>
+            <button class="action-btn reject" data-action="rejected" data-id="${rental.id}">Reject</button>
+        `;
+    } else if (rental.status === 'approved') {
+        return `<button class="action-btn complete" data-action="completed" data-id="${rental.id}">Complete</button>`;
+    }
+    return '';
+}
+
+// Video functions
 async function fetchVideos() {
     try {
         const response = await fetch(`${API_BASE_URL}/videos`);
-        const videos = await response.json();
+        const result = await response.json();
+        const videos = result.data || [];
         const videoTable = document.getElementById("videoTable");
-        if (!videos || !videoTable) return;
+        if (!videoTable) return;
         
-        videoTable.innerHTML = "";
-        videos.forEach((video) => {
-            const row = document.createElement("tr");
-            row.innerHTML = `
-                <td>${video.title}</td>
-                <td><a href="${video.video_url}" target="_blank">Watch Video</a></td>
-                <td>
-                    <button class="edit-btn" data-id="${video.id}">Edit</button>
-                    <button class="delete-btn" data-id="${video.id}">Delete</button>
-                </td>
-            `;
-            videoTable.appendChild(row);
-        });
+        videoTable.innerHTML = videos.length === 0 ? 
+            `<tr><td colspan="3" class="text-center">No videos found</td></tr>` : 
+            videos.map(video => `
+                <tr>
+                    <td>${video.title}</td>
+                    <td><a href="${video.url}" target="_blank">Watch Video</a></td>
+                    <td>
+                        <button class="delete-btn" data-id="${video.id}">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
     } catch (error) {
         console.error("Error fetching videos:", error);
+        showNotification("Error fetching videos: " + error.message, 'error');
     }
 }
 
-// Add video
-async function addVideo(title, video_url) {
+async function addVideo(title, video_url, description = '') {
     try {
         const response = await fetch(`${API_BASE_URL}/videos`, {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ title, video_url })
+            headers: { 
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${localStorage.getItem('adminToken')}`
+            },
+            body: JSON.stringify({ 
+                title, 
+                url: video_url,
+                description
+            })
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
-        alert("Video added successfully!");
+        showNotification("Video added successfully!", 'success');
     } catch (error) {
         console.error("Error adding video:", error);
-        alert("Failed to add video: " + error.message);
+        showNotification("Failed to add video: " + error.message, 'error');
     }
 }
 
-// Delete video
 async function deleteVideo(id) {
     try {
         const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
-            method: "DELETE"
+            method: "DELETE",
+            headers: {
+                "Authorization": `Bearer ${localStorage.getItem('adminToken')}`
+            }
         });
+        if (response.status === 204) {
+            showNotification("Video deleted successfully!", 'success');
+            return;
+        }
         const data = await response.json();
         if (!response.ok) throw new Error(data.message);
-        alert("Video deleted successfully!");
+        showNotification("Video deleted successfully!", 'success');
     } catch (error) {
         console.error("Error deleting video:", error);
-        alert("Failed to delete video: " + error.message);
+        showNotification("Failed to delete video: " + error.message, 'error');
     }
 }

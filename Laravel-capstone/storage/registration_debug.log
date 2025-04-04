@@ -1,0 +1,35 @@
+[2025-04-01 17:12:01] Raw Input: {"first_name":"kimi","last_name":"kimi","email":"Kimiyaya@gmail.com","password":"Kim@1234","phone_number":"098765432"}
+Full Request: Array
+(
+    [DOCUMENT_ROOT] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public
+    [REMOTE_ADDR] => 172.20.10.3
+    [REMOTE_PORT] => 63270
+    [SERVER_SOFTWARE] => PHP/8.4.4 (Development Server)
+    [SERVER_PROTOCOL] => HTTP/1.1
+    [SERVER_NAME] => 0.0.0.0
+    [SERVER_PORT] => 8000
+    [REQUEST_URI] => /admin-dashboard/html/farmer/register.php
+    [REQUEST_METHOD] => POST
+    [SCRIPT_NAME] => /admin-dashboard/html/farmer/register.php
+    [SCRIPT_FILENAME] => /Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/Laravel-capstone/public/admin-dashboard/html/farmer/register.php
+    [PHP_SELF] => /admin-dashboard/html/farmer/register.php
+    [HTTP_USER_AGENT] => Dart/3.7 (dart:io)
+    [CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_CONTENT_TYPE] => application/json; charset=utf-8
+    [HTTP_ACCEPT] => application/json
+    [HTTP_ACCEPT_ENCODING] => gzip
+    [CONTENT_LENGTH] => 118
+    [HTTP_CONTENT_LENGTH] => 118
+    [HTTP_HOST] => 172.20.10.3:8000
+    [REQUEST_TIME_FLOAT] => 1743527521.9955
+    [REQUEST_TIME] => 1743527521
+)
+
+
+[2025-04-01 17:12:01] Server Error: No such file or directory
+[2025-04-01 17:16:04] Raw Input: {"first_name":"Kia","last_name":"Kia","email":"Kia@gmail.com","password":"Kia@1234","phone_number":"098765432"}
+[2025-04-01 17:16:04] Server Error: No such file or directory
+[2025-04-01 17:19:54] Raw Input: {"first_name":"Kiax","last_name":"Kiax","email":"Kiax@gmail.com","password":"Kiax@1234","phone_number":"098765432"}
+[2025-04-01 17:19:54] Server Error: No such file or directory
+[2025-04-02 06:19:49] Raw Input: {"first_name":"kk","last_name":"kk","email":"Kk@gmail.com","password":"Kk@12345","phone_number":"016269307"}
+[2025-04-02 06:19:49] Server Error: No such file or directory

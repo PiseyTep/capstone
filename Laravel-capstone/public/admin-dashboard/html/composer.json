@@ -1,0 +1,22 @@
+{
+    "name": "agritech/login-farmer",
+    "description": "AgriTech Farmer Login System",
+    "type": "project",
+    "require": {
+        "firebase/php-jwt": "^6.0",
+        "vlucas/phpdotenv": "^5.4"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Agritech\\LoginFarmer\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Pisey Tep",
+            "email": "piseytep26@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable"
+}

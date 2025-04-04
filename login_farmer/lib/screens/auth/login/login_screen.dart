@@ -1,12 +1,11 @@
+///Applications/XAMPP/xamppfiles/htdocs/LoginFarmer/login_farmer/lib/screens/auth/login/login_screen.dart
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_sign_in/google_sign_in.dart';
-import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:login_farmer/Theme/colors.dart';
-
+import 'package:login_farmer/main.dart';
 import 'package:login_farmer/pages/home/onboarding.dart';
 import 'package:login_farmer/screens/auth/forgot_password_screen.dart';
-
+import 'package:login_farmer/service/api_service.dart';
+import 'package:login_farmer/service/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -17,12 +16,77 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
-  final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final _formKey = GlobalKey<FormState>();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
 
   bool _isPasswordVisible = false;
   bool _isLoading = false;
+  String? _errorMessage;
+  final _authService = getIt<AuthService>();
+  final _apiService = getIt<ApiService>();
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _login() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final response = await _authService.login(
+          _emailController.text.trim(), _passwordController.text.trim());
+
+      if (response['success'] == true) {
+        // Navigate to home or onboarding screen
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => Onboarding()),
+        );
+      } else {
+        setState(() {
+          _errorMessage = response['message'];
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = 'An unexpected error occurred';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _saveUserDetails(Map<String, dynamic> userData) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', userData['id'].toString());
+    await prefs.setString('user_email', userData['email']);
+  }
+
+  void _navigateToOnboarding() {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const Onboarding()),
+    );
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,14 +105,21 @@ class _LoginScreenState extends State<LoginScreen> {
               children: [
                 Image.asset(
                   'assets/images/agritech_logo.jpg',
-                  height: 300,
-                  width: 300,
+                  height: 200,
+                  width: 200,
                 ),
                 const SizedBox(height: 20),
                 _buildEmailTextField(),
                 const SizedBox(height: 16),
                 _buildPasswordTextField(),
                 _buildForgotPasswordButton(),
+                const SizedBox(height: 16),
+                if (_errorMessage != null)
+                  Text(
+                    _errorMessage!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 const SizedBox(height: 16),
                 _buildLoginButton(),
                 const SizedBox(height: 20),
@@ -67,9 +138,11 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextFormField(
       controller: _emailController,
       decoration: InputDecoration(
-        hintText: 'Email',
-        prefixIcon: const Icon(Icons.email, color: Colors.grey),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        labelText: 'Email',
+        prefixIcon: const Icon(Icons.email),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       keyboardType: TextInputType.emailAddress,
       validator: (value) {
@@ -77,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
           return 'Please enter your email';
         }
         if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
-          return 'Please enter a valid email address';
+          return 'Please enter a valid email';
         }
         return null;
       },
@@ -89,38 +162,50 @@ class _LoginScreenState extends State<LoginScreen> {
       controller: _passwordController,
       obscureText: !_isPasswordVisible,
       decoration: InputDecoration(
-        hintText: 'Password',
-        prefixIcon: const Icon(Icons.lock, color: Colors.grey),
+        labelText: 'Password',
+        prefixIcon: const Icon(Icons.lock),
         suffixIcon: IconButton(
           icon: Icon(
-              _isPasswordVisible ? Icons.visibility : Icons.visibility_off),
-          onPressed: () =>
-              setState(() => _isPasswordVisible = !_isPasswordVisible),
+            _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+          ),
+          onPressed: () {
+            setState(() {
+              _isPasswordVisible = !_isPasswordVisible;
+            });
+          },
         ),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter your password';
         }
         if (value.length < 6) {
-          return 'Password must be at least 6 characters long';
+          return 'Password must be at least 6 characters';
         }
         return null;
       },
     );
   }
 
-  // Forgot Password Button
   Widget _buildForgotPasswordButton() {
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () => Navigator.push(
-            context, MaterialPageRoute(builder: (_) => ForgotPasswordScreen())),
-        child: Text('Forgot Password?',
-            style: TextStyle(
-                color: AppColors.primaryColor, fontWeight: FontWeight.bold)),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ForgotPasswordScreen(),
+            ),
+          );
+        },
+        child: const Text(
+          'Forgot Password?',
+          style: TextStyle(color: AppColors.primaryColor),
+        ),
       ),
     );
   }
@@ -131,24 +216,28 @@ class _LoginScreenState extends State<LoginScreen> {
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primaryColor,
         padding: const EdgeInsets.symmetric(vertical: 16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       child: _isLoading
           ? const CircularProgressIndicator(color: Colors.white)
-          : const Text('Login',
-              style: TextStyle(fontSize: 16, color: Colors.white)),
+          : const Text(
+              'LOGIN',
+              style: TextStyle(fontSize: 16, color: Colors.white),
+            ),
     );
   }
 
   Widget _buildDividerWithText() {
     return Row(
       children: const [
-        Expanded(child: Divider(thickness: 1, color: Colors.grey)),
+        Expanded(child: Divider()),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: 10),
-          child: Text("OR", style: TextStyle(color: Colors.grey, fontSize: 14)),
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('OR'),
         ),
-        Expanded(child: Divider(thickness: 1, color: Colors.grey)),
+        Expanded(child: Divider()),
       ],
     );
   }
@@ -156,219 +245,42 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget _buildSocialLoginButtons() {
     return Column(
       children: [
-        // Google Sign In Button
         ElevatedButton.icon(
           icon: Image.asset(
             'assets/images/google_icon.png',
             height: 24,
             width: 24,
           ),
-          label: const Text(
-            'Continue with Google',
-            style: TextStyle(color: Colors.black87),
-          ),
-          onPressed: _signInWithGoogle,
+          label: const Text('Continue with Google'),
+          onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.grey, width: 1),
+              borderRadius: BorderRadius.circular(10),
+              side: const BorderSide(color: Colors.grey),
             ),
           ),
         ),
         const SizedBox(height: 12),
-        // Facebook Sign In Button
         ElevatedButton.icon(
           icon: Image.asset(
             'assets/images/facebook_icon.png',
             height: 24,
             width: 24,
           ),
-          label: const Text(
-            'Continue with Facebook',
-            style: TextStyle(color: Colors.black),
-          ),
-          onPressed: _signInWithFacebook,
+          label: const Text('Continue with Facebook'),
+          onPressed: () {},
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+            foregroundColor: Colors.black,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: const BorderSide(color: Colors.grey, width: 1),
+              borderRadius: BorderRadius.circular(10),
+              side: const BorderSide(color: Colors.grey),
             ),
           ),
         ),
       ],
     );
-  }
-
-  Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      try {
-        final UserCredential userCredential =
-            await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: _emailController.text.trim(),
-          password: _passwordController.text.trim(),
-        );
-
-        await _saveUserDetails(userCredential);
-        _navigateToOnboarding();
-      } on FirebaseAuthException catch (e) {
-        _handleAuthError(e);
-      } catch (e) {
-        _showErrorSnackBar('Login Failed: ${e.toString()}');
-      } finally {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
-
-  // Future<void> _login() async {
-  //   if (_formKey.currentState!.validate()) {
-  //     setState(() => _isLoading = true);
-
-  //     try {
-  //       final UserCredential userCredential =
-  //           await FirebaseAuth.instance.signInWithEmailAndPassword(
-  //         email: _emailController.text.trim(),
-  //         password: _passwordController.text.trim(),
-  //       );
-
-  //       // Get user service
-  //       final userService = UserService();
-
-  //       // Attempt to get user data from Firestore
-  //       UserProfile? userProfile = await userService.getUserDataFromFirestore();
-
-  //       // If no data in Firestore (which is unusual but possible), create minimal profile
-  //       if (userProfile == null) {
-  //         userProfile = UserProfile(
-  //           uuid: userCredential.user!.uid,
-  //           name: userCredential.user!.displayName ?? '',
-  //           email: userCredential.user!.email ?? '',
-  //           phoneNumber: '',
-  //           photoUrl: userCredential.user!.photoURL,
-  //         );
-  //       }
-
-  //       // Save to local storage
-  //       await userService.saveUserToLocalStorage(userProfile);
-
-  //       _navigateToOnboarding();
-  //     } on FirebaseAuthException catch (e) {
-  //       _handleAuthError(e);
-  //     } catch (e) {
-  //       _showErrorSnackBar('Login Failed: ${e.toString()}');
-  //     } finally {
-  //       setState(() => _isLoading = false);
-  //     }
-  //   }
-  // }
-
-  Future<void> _signInWithGoogle() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final GoogleSignIn googleSignIn = GoogleSignIn();
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
-
-      if (googleUser == null) {
-        setState(() => _isLoading = false);
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      final OAuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      final UserCredential userCredential =
-          await FirebaseAuth.instance.signInWithCredential(credential);
-
-      await _saveUserDetails(userCredential);
-      _navigateToOnboarding();
-    } catch (e) {
-      _showErrorSnackBar('Google Sign In Failed: ${e.toString()}');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _signInWithFacebook() async {
-    setState(() => _isLoading = true);
-
-    try {
-      final LoginResult loginResult = await FacebookAuth.instance.login();
-
-      if (loginResult.status == LoginStatus.success) {
-        final OAuthCredential facebookAuthCredential =
-            FacebookAuthProvider.credential(
-                loginResult.accessToken!.tokenString);
-
-        final UserCredential userCredential = await FirebaseAuth.instance
-            .signInWithCredential(facebookAuthCredential);
-
-        await _saveUserDetails(userCredential);
-        _navigateToOnboarding();
-      } else {
-        throw FirebaseAuthException(
-          code: 'facebook-login-cancelled',
-          message: 'Facebook login was cancelled or failed',
-        );
-      }
-    } on FirebaseAuthException catch (e) {
-      _handleAuthError(e);
-    } catch (e) {
-      _showErrorSnackBar('Facebook Sign In Failed: ${e.toString()}');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _saveUserDetails(UserCredential userCredential) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_uuid', userCredential.user?.uid ?? '');
-    await prefs.setString('user_email', userCredential.user?.email ?? '');
-  }
-
-  void _navigateToOnboarding() {
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const Onboarding()),
-    );
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
-  }
-
-  void _handleAuthError(FirebaseAuthException e) {
-    String errorMessage = 'Login failed';
-    switch (e.code) {
-      case 'user-not-found':
-        errorMessage = 'No user found for this email';
-        break;
-      case 'wrong-password':
-        errorMessage = 'Incorrect password';
-        break;
-      case 'invalid-email':
-        errorMessage = 'Invalid email format';
-        break;
-    }
-    _showErrorSnackBar(errorMessage);
-  }
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
   }
 }

@@ -1,4 +1,4 @@
-// login.js - Save to /LoginFarmer/Laravel-capstone/public/admin-dashboard/js/login.js
+
 
 // Handle form toggling
 document.addEventListener("DOMContentLoaded", function() {

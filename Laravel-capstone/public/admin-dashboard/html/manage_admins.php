@@ -4,81 +4,96 @@ include("connect.php");
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// API Base URL - Update with your actual API URL
+$api_base_url = "http://172.20.10.3:8000/api";
+
 function redirect($url) {
     header("Location: $url");
     exit();
 }
 
 // Check if user is logged in
-if (!isset($_SESSION['email'])) {
+if (!isset($_SESSION['email']) || !isset($_SESSION['api_token'])) {
     redirect("login.php");
 }
 
-// Check if user is a super admin
-$email = $_SESSION['email'];
-$query = $conn->prepare("SELECT * FROM `users` WHERE email=?");
-$query->bind_param("s", $email);
-$query->execute();
-$user = $query->get_result()->fetch_assoc();
+// API request helper function
+function api_request($endpoint, $method = 'GET', $data = null) {
+    global $api_base_url;
+    
+    $ch = curl_init($api_base_url . $endpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    
+    $headers = [
+        'Authorization: Bearer ' . $_SESSION['api_token'],
+        'Accept: application/json'
+    ];
+    
+    if ($data) {
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        $headers[] = 'Content-Type: application/json';
+    }
+    
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    
+    $response = curl_exec($ch);
+    $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    return [
+        'status' => $statusCode,
+        'data' => json_decode($response, true)
+    ];
+}
 
-if (!$user || $user['role'] !== 'super_admin') {
+// Check if user is super admin
+if ($_SESSION['role'] !== 'super_admin') {
     redirect("index.php?error=permission");
 }
 
-// Initialize admin arrays
+// Get all users from API
+$users_response = api_request('/admin/users');
+$all_users = [];
 $pendingAdmins = [];
 $approvedAdmins = [];
 
-// Check if super admin
-$isSuperAdmin = ($user && isset($user['role']) && $user['role'] === 'super_admin');
-
-// If not super admin, redirect to dashboard
-if (!$isSuperAdmin) {
-    header("Location: index.php?error=permission");
-    exit();
-}
-
-// Fetch pending admins directly from database
-$pendingAdmins = [];
-$pendingQuery = $conn->prepare("SELECT * FROM `users` WHERE approved = 0");
-$pendingQuery->execute();
-$result = $pendingQuery->get_result();
-while ($row = $result->fetch_assoc()) {
-    $pendingAdmins[] = $row;
-}
-
-// Fetch all approved admins directly from database
-$approvedAdmins = [];
-$approvedQuery = $conn->prepare("SELECT * FROM `users` WHERE approved = 1");
-$approvedQuery->execute();
-$result = $approvedQuery->get_result();
-while ($row = $result->fetch_assoc()) {
-    $approvedAdmins[] = $row;
+if ($users_response['status'] === 200) {
+    $all_users = $users_response['data']['data']['data'] ?? []; // Adjust based on your API response structure
+    
+    // Filter users based on role and approval status
+    foreach ($all_users as $user) {
+        if (in_array($user['role'], ['admin', 'super_admin'])) {
+            if ($user['approved']) {
+                $approvedAdmins[] = $user;
+            } else {
+                $pendingAdmins[] = $user;
+            }
+        }
+    }
 }
 
 // Handle admin approval
 if (isset($_POST['approve_admin']) && isset($_POST['admin_id'])) {
     $adminId = $_POST['admin_id'];
-    $updateQuery = $conn->prepare("UPDATE `users` SET approved = 1 WHERE id = ?");
-    $updateQuery->bind_param("i", $adminId);
-    if ($updateQuery->execute()) {
-        header("Location: manage_admins.php?success=approved");
-        exit();
+    $approve_response = api_request("/admin/users/{$adminId}/approve", 'PUT');
+    
+    if ($approve_response['status'] === 200) {
+        redirect("manage_admins.php?success=approved");
     } else {
-        $error_message = "Error approving administrator: " . $conn->error;
+        $error_message = "Error approving administrator: " . ($approve_response['data']['message'] ?? 'Unknown error');
     }
 }
 
 // Handle admin deletion
 if (isset($_POST['delete_admin']) && isset($_POST['admin_id'])) {
     $adminId = $_POST['admin_id'];
-    $deleteQuery = $conn->prepare("DELETE FROM `users` WHERE id = ? AND id != ?");
-    $deleteQuery->bind_param("ii", $adminId, $user['id']);
-    if ($deleteQuery->execute()) {
-        header("Location: manage_admins.php?success=deleted");
-        exit();
+    $delete_response = api_request("/admin/users/{$adminId}", 'DELETE');
+    
+    if ($delete_response['status'] === 200) {
+        redirect("manage_admins.php?success=deleted");
     } else {
-        $error_message = "Error deleting administrator: " . $conn->error;
+        $error_message = "Error deleting administrator: " . ($delete_response['data']['message'] ?? 'Unknown error');
     }
 }
 
@@ -87,28 +102,22 @@ if (isset($_POST['add_admin'])) {
     $firstName = $_POST['firstName'];
     $lastName = $_POST['lastName'];
     $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT);
+    $password = $_POST['password'];
     $role = $_POST['adminRole'];
     $approved = $_POST['adminApproved'];
     
-    // Check if email already exists
-    $checkEmail = $conn->prepare("SELECT * FROM `users` WHERE email = ?");
-    $checkEmail->bind_param("s", $email);
-    $checkEmail->execute();
-    $checkResult = $checkEmail->get_result();
-
-    if ($checkResult->num_rows > 0) {
-        $error_message = "Email already exists!";
+    $create_response = api_request("/admin/users", 'POST', [
+        'name' => $firstName . ' ' . $lastName,
+        'email' => $email,
+        'password' => $password,
+        'role' => $role,
+        'approved' => (int)$approved
+    ]);
+    
+    if ($create_response['status'] === 201) {
+        redirect("manage_admins.php?success=added");
     } else {
-        $insertQuery = $conn->prepare("INSERT INTO users (first_name, last_name, email, password, role, approved) VALUES (?, ?, ?, ?, ?, ?)");
-        $insertQuery->bind_param("sssssi", $firstName, $lastName, $email, $password, $role, $approved);
-        
-        if ($insertQuery->execute()) {
-            header("Location: manage_admins.php?success=added");
-            exit();
-        } else {
-            $error_message = "Error adding administrator: " . $insertQuery->error;
-        }
+        $error_message = "Error adding administrator: " . ($create_response['data']['message'] ?? 'Unknown error');
     }
 }
 ?>

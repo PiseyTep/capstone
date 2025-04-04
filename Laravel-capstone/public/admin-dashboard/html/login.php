@@ -1,86 +1,199 @@
 <?php
-session_start();
-include 'connect.php';
+// Strict error reporting and security settings
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
 
-// Handle User Registration
-if (isset($_POST['signUp'])) {
-    // Get form data
-    $firstName = $_POST['fName'];
-    $lastName = $_POST['lName'];
-    $email = $_POST['email'];
-    $password = password_hash($_POST['password'], PASSWORD_BCRYPT); // Hash the password
+// Secure session configuration
+ini_set('session.save_path', '/tmp');
+ini_set('session.use_strict_mode', 1);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_samesite', 'Strict');
 
-    // Check if the email already exists
-    $checkEmail = "SELECT * FROM `users` WHERE email=?";
-    $stmt = $conn->prepare($checkEmail);
-    if ($stmt === false) {
-        die("Error preparing email check query: " . $conn->error);
-    }
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+// Start output buffering
+ob_start();
 
-    if ($result->num_rows > 0) {
-        // Email already exists
-        $error_message = "Email Address Already Exists!";
-    } else {
-        // Insert new admin into the database - defaults to unapproved status
-       // In login.php, update your insert query to match the database structure
+// Start secure session
+session_start();
 
-$insertQuery = $conn->prepare("INSERT INTO `users` (first_name, last_name, email, password, approved, role) VALUES (?, ?, ?, ?, 0, 'admin')");
-        if ($insertQuery === false) {
-            die("Error preparing insert query: " . $conn->error);
+// Define users file path
+define('USERS_FILE', __DIR__ . '/users.json');
+
+// User Management Class
+class UserManager {
+    private $usersFile;
+
+    public function __construct($usersFile) {
+        $this->usersFile = $usersFile;
+        
+        // Ensure users file exists
+        if (!file_exists($this->usersFile)) {
+            file_put_contents($this->usersFile, json_encode([]));
         }
+    }
 
-        $insertQuery->bind_param("ssss", $firstName, $lastName, $email, $password);
-        if ($insertQuery->execute()) {
-            // Registration successful, show pending approval message
-            $success_message = "Registration successful! Your account requires approval from a super admin before you can log in.";
+    // Read users from file
+    private function readUsers() {
+        $users = file_get_contents($this->usersFile);
+        return json_decode($users, true) ?: [];
+    }
+
+    // Write users to file
+    private function writeUsers($users) {
+        $jsonUsers = json_encode($users, JSON_PRETTY_PRINT);
+        file_put_contents($this->usersFile, $jsonUsers);
+    }
+
+    // Verify user credentials
+    public function verifyUser($email, $password) {
+        $users = $this->readUsers();
+        
+        foreach ($users as $user) {
+            if ($user['email'] === $email) {
+                // Verify password
+                if (password_verify($password, $user['password'])) {
+                    return $user;
+                }
+                break;
+            }
+        }
+        return false;
+    }
+
+    // Register new user
+    public function registerUser($userData) {
+        $users = $this->readUsers();
+        
+        // Check if email already exists
+        foreach ($users as $user) {
+            if ($user['email'] === $userData['email']) {
+                return false;
+            }
+        }
+        
+        // Hash password
+        $userData['password'] = password_hash($userData['password'], PASSWORD_DEFAULT);
+        
+        // Add unique ID
+        $userData['id'] = uniqid();
+        
+        // Add timestamp
+        $userData['created_at'] = date('Y-m-d H:i:s');
+        
+        // Assign role if not set
+        $userData['role'] = $userData['role'] ?? 'user';
+        
+        // Add to users array
+        $users[] = $userData;
+        
+        // Write back to file
+        $this->writeUsers($users);
+        
+        return true;
+    }
+}
+
+// Initialize User Manager
+$userManager = new UserManager(USERS_FILE);
+
+// Handle User Login
+if (isset($_POST['signIn'])) {
+    // Validate input
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $password = $_POST['password'] ?? '';
+    
+    if (!$email) {
+        $error_message = "Invalid email address.";
+    } elseif (empty($password)) {
+        $error_message = "Password cannot be empty.";
+    } else {
+        // Attempt to verify user
+        $user = $userManager->verifyUser($email, $password);
+        
+        if ($user) {
+            // Clear existing session data
+            session_unset();
+            session_destroy();
+            session_start();
+            
+            // Set new session data
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['email'] = $user['email'];
+            $_SESSION['name'] = $user['name'];
+            $_SESSION['role'] = $user['role'] ?? 'user';
+            
+            // Regenerate session ID for security
+            session_regenerate_id(true);
+            
+            // Redirect based on role
+            switch ($_SESSION['role']) {
+                case 'admin':
+                case 'super_admin':
+                    header("Location: index.php");
+                    break;
+                default:
+                    header("Location: index.php");
+            }
+            exit();
         } else {
-            die("Error: " . $insertQuery->error);
+            $error_message = "Invalid email or password.";
         }
     }
 }
 
-if (isset($_POST['signIn'])) {
-  $email = $_POST['email'];
-  $password = $_POST['password'];
-
-  // Check if the user exists
-  $checkUser = "SELECT * FROM `users` WHERE email=?";
-  $stmt = $conn->prepare($checkUser);
-  if ($stmt === false) {
-      die("Error preparing user check query: " . $conn->error);
-  }
-
-  $stmt->bind_param("s", $email);
-  $stmt->execute();
-  $result = $stmt->get_result();
-
-  if ($result->num_rows == 1) {
-      $user = $result->fetch_assoc();
-
-      if (password_verify($password, $user['password'])) {
-          // Check if account is approved
-          if (!$user['approved']) {
-              $error_message = "Your account is pending approval. Please contact a super admin.";
-          } else {
-              // Login successful
-              $_SESSION['user_id'] = $user['id']; // Change from 'Id' to 'id'
-              $_SESSION['email'] = $user['email'];
-              $_SESSION['role'] = $user['role'] ?? 'admin'; // Store the role in session
-              
-              header("Location: /LoginFarmer/Laravel-capstone/public/admin-dashboard/html/index.php"); // Redirect to index.php upon successful login
-              exit();
-          }
-      } else {
-          $error_message = "Incorrect Password!";
-      }
-  } else {
-      $error_message = "No user found with that email!";
-  }
+// Handle User Registration
+if (isset($_POST['signUp'])) {
+    // Validate input
+    $firstName = filter_input(INPUT_POST, 'first_name', FILTER_SANITIZE_STRING);
+    $lastName = filter_input(INPUT_POST, 'last_name', FILTER_SANITIZE_STRING);
+    $email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+    $password = $_POST['password'] ?? '';
+    $confirmPassword = $_POST['confirm_password'] ?? '';
+    
+    // Validation checks
+    $errors = [];
+    
+    if (empty($firstName)) {
+        $errors[] = "First name is required.";
+    }
+    
+    if (empty($lastName)) {
+        $errors[] = "Last name is required.";
+    }
+    
+    if (!$email) {
+        $errors[] = "Invalid email address.";
+    }
+    
+    if (strlen($password) < 8) {
+        $errors[] = "Password must be at least 8 characters long.";
+    }
+    
+    if ($password !== $confirmPassword) {
+        $errors[] = "Passwords do not match.";
+    }
+    
+    // If no validation errors, proceed with registration
+    if (empty($errors)) {
+        // Prepare user data
+        $userData = [
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'name' => $firstName . ' ' . $lastName,
+            'email' => $email,
+            'password' => $password,
+            'role' => 'user' // Default role
+        ];
+        
+        // Attempt to register user
+        if ($userManager->registerUser($userData)) {
+            $success_message = "Registration successful! You can now log in.";
+        } else {
+            $error_message = "Email already exists. Please use a different email.";
+        }
+    } else {
+        // Collect validation errors
+        $error_message = implode("<br>", $errors);
+    }
 }
 ?>
 
@@ -92,7 +205,7 @@ if (isset($_POST['signIn'])) {
     <title>Login & Register</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
-    <link rel="stylesheet" href="/LoginFarmer/Laravel-capstone/public/admin-dashboard/css/login.css">
+    <link rel="stylesheet" href="../css/login.css">
     <style>
         .success-message {
             background-color: #d4edda;

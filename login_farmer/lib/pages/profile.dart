@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:login_farmer/Theme/colors.dart';
+import 'package:login_farmer/main.dart';
 import 'package:login_farmer/pages/history.dart';
 import 'package:login_farmer/pages/payment.dart';
 import 'package:login_farmer/pages/view_profile.dart';
 import 'package:login_farmer/service/api_service.dart';
+import 'package:login_farmer/service/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -30,10 +32,10 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    final apiService = ApiService();
+    final _apiService = getIt<ApiService>(); // ✅ Correct
 
     // First try to get data from API
-    final userProfile = await apiService.getUserProfile();
+    final userProfile = await _apiService.getProfile();
 
     if (userProfile['success']) {
       final userData = userProfile['data'];
@@ -176,11 +178,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
-    final apiService = ApiService();
-    await prefs.clear(); // Clear user data
-    await apiService.logout();
+    final authService =
+        getIt<AuthService>(); // ✅ Get AuthService, not ApiService
+    await prefs.clear(); // Clear local user data
+    await authService.logout(); // ✅ logout is here, not in ApiService
 
-    Navigator.of(context).pop(); // Go back to the welcome screen
+    Navigator.of(context).pop(); // or pushReplacement to Welcome/Login screen
   }
 
   @override

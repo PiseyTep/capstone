@@ -10,40 +10,36 @@ class HomePage extends StatefulWidget {
 
   @override
   State<HomePage> createState() => _HomePageState();
-
-  // Bottom navigation bar method should be inside _HomePageState, not in the widget class
 }
 
 class _HomePageState extends State<HomePage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
-    // The Home Page Content
-    HomePageContent(), // We will define this widget separately
-    HistoryPage(), // Your History page
-    ProfilePage(), // Your Profile page
+    const HomePageContent(), // Now properly defined
+    const HistoryPage(),
+    const ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: buildAppBar(), // Ensure this returns a PreferredSizeWidget
-      body: _pages[_currentIndex], // Display the selected page
+      body: _pages[_currentIndex],
       bottomNavigationBar: buildBottomNavigationBar1(_currentIndex, (index) {
         setState(() {
-          _currentIndex = index; // Update the current index
+          _currentIndex = index;
         });
       }),
     );
   }
 
-  Widget buildBottomNavigationBar1(int currentIndex, Function(int) onTap) {
+  BottomNavigationBar buildBottomNavigationBar1(
+      int currentIndex, Function(int) onTap) {
     return BottomNavigationBar(
       currentIndex: currentIndex,
       onTap: onTap,
-      selectedItemColor: Color(0xFF375534), // Change this to your desired color
-      unselectedItemColor: Colors.grey, // Change this to your desired color
-
+      selectedItemColor: const Color(0xFF375534),
+      unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(
           icon: Icon(Icons.home),
@@ -62,8 +58,9 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// HomePageContent widget that was previously directly inside _pages
 class HomePageContent extends StatelessWidget {
+  const HomePageContent({super.key});
+
   @override
   Widget build(BuildContext context) {
     final List<String> imagePaths = [
@@ -79,27 +76,28 @@ class HomePageContent extends StatelessWidget {
       {"icon": Icons.speaker_notes, "label": "SRP"},
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        buildCarousel(MediaQuery.of(context).size.height, imagePaths,
-            0), // Assuming 0 for the initial index
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Text(
-            "Categories",
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+    return Scaffold(
+      appBar: buildAppBar(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildCarousel(MediaQuery.of(context).size.height, imagePaths, 0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16.0),
+            child: Text(
+              "Categories",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
             ),
           ),
-        ),
-        Expanded(
-          child: buildCategoryGrid(categories,
-              context), // Make sure this function is defined properly
-        ),
-      ],
+          Expanded(
+            child: buildCategoryGrid(categories, context),
+          ),
+        ],
+      ),
     );
   }
 }
